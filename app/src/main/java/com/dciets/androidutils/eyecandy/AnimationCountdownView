@@ -1,0 +1,156 @@
+package com.dciets.androidutils.eyecandy;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.util.AttributeSet;
+import android.util.TypedValue;
+import android.view.View;
+
+/**
+ * Created by mahinse on 11/1/2016.
+ */
+
+public class AnimationCountdownView extends View {
+    private final static long MAXIMUM_SECS = 10;
+    private final static long MAXIMUM_MILLIS = MAXIMUM_SECS * 1000;
+    private final static long DEFAULT_SWEEP_ANGLE = 60;
+
+    private long secondsLeft;
+    private long startedAnimation;
+    private long sweepAngle;
+    private Paint backgroundPaint;
+    private Paint outerCirclePaint;
+    private Paint innerArcPaint;
+    private Paint textPaint;
+    private RectF rectArc;
+    private int currentAngle;
+
+    private float circleSize;
+
+    private boolean useInfiniteProgress;
+
+
+    public AnimationCountdownView(Context context) {
+        super(context);
+        init(context);
+    }
+
+    public AnimationCountdownView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init(context);
+    }
+
+    public AnimationCountdownView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init(context);
+    }
+
+    private void init(final Context context) {
+        startedAnimation = -1;
+        sweepAngle = DEFAULT_SWEEP_ANGLE;
+        currentAngle = 0;
+        useInfiniteProgress = true;
+
+        outerCirclePaint = new Paint();
+        outerCirclePaint.setStrokeWidth(convertToPx(context, 1));
+        outerCirclePaint.setColor(Color.parseColor("#B3FFFFFF"));
+        outerCirclePaint.setStyle(Paint.Style.STROKE);
+        outerCirclePaint.setAntiAlias(true);
+
+        innerArcPaint = new Paint();
+        innerArcPaint.setStrokeWidth(convertToPx(context, 3));
+        innerArcPaint.setColor(Color.parseColor("#B3454545"));
+        innerArcPaint.setStyle(Paint.Style.STROKE);
+        innerArcPaint.setAntiAlias(true);
+
+        backgroundPaint = new Paint();
+        backgroundPaint.setColor(Color.parseColor("#B3c2c2c2"));
+        backgroundPaint.setStyle(Paint.Style.FILL);
+        backgroundPaint.setAntiAlias(true);
+
+        textPaint = new Paint();
+        textPaint.setTextSize(convertToPx(context, 24));
+        textPaint.setColor(Color.parseColor("#B3FFFFFF"));
+        textPaint.setAntiAlias(true);
+
+        circleSize = convertToPx(context, 50);
+
+        final float left = innerArcPaint.getStrokeWidth() / 2;
+        final float top = innerArcPaint.getStrokeWidth() / 2;
+        final float right = circleSize - (innerArcPaint.getStrokeWidth() / 2);
+        final float bottom = circleSize - (innerArcPaint.getStrokeWidth() / 2);
+
+        rectArc = new RectF(left, top, right, bottom);
+    }
+
+    public void setSecondsLeft(int secondsLeft) {
+        this.secondsLeft = secondsLeft * 1000;
+        startedAnimation = System.currentTimeMillis();
+        requestLayout();
+        invalidate();
+    }
+
+    public void setSecondsLeft(long millisLeft) {
+        this.secondsLeft = millisLeft;
+        startedAnimation = System.currentTimeMillis();
+        requestLayout();
+        invalidate();
+    }
+
+    public void setSweepAngle(long sweepAngle) {
+        this.sweepAngle = sweepAngle;
+        requestLayout();
+        invalidate();
+    }
+
+    public void setUseInfiniteProgress(boolean useInfiniteProgress) {
+        this.useInfiniteProgress = useInfiniteProgress;
+    }
+
+    private float convertToPx(final Context context, final int dp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        setMeasuredDimension((int) circleSize, (int) circleSize);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        canvas.drawCircle(circleSize / 2, circleSize / 2, (circleSize / 2), backgroundPaint);
+
+        canvas.drawCircle(circleSize / 2, circleSize / 2, (circleSize / 2) - outerCirclePaint.getStrokeWidth(), outerCirclePaint);
+
+        final long elapsedTime = (System.currentTimeMillis() - startedAnimation);
+        secondsLeft = MAXIMUM_SECS - elapsedTime / 1000;
+        secondsLeft = (secondsLeft >= 0 && secondsLeft <= MAXIMUM_SECS) ? secondsLeft : 0;
+
+        Path arcParc = new Path();
+        if(useInfiniteProgress) {
+            arcParc.arcTo(rectArc, currentAngle, sweepAngle, false);
+        } else {
+            if(secondsLeft > 0) {
+                final float millisLeft = (MAXIMUM_MILLIS - elapsedTime);
+                final float sweepAngle = ((millisLeft / MAXIMUM_MILLIS) * 360f);
+                arcParc.arcTo(rectArc, 270, sweepAngle, false);
+            }
+        }
+        canvas.drawPath(arcParc, innerArcPaint);
+
+        final String textToShow = String.valueOf(secondsLeft);
+        int xPos = (int) (circleSize / 2) - (int) (textPaint.measureText(textToShow) / 2);
+        int yPos = (int) ((circleSize / 2) - ((textPaint.descent() + textPaint.ascent()) / 2));
+
+        canvas.drawText(textToShow, xPos, yPos, textPaint);
+
+        currentAngle+=5;
+        invalidate();
+    }
+}
